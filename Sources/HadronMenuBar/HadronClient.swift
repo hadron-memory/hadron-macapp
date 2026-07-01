@@ -40,35 +40,49 @@ struct HadronClient {
     }
 
     func taskNodes(memoryId: String? = nil, limit: Int = 200) async throws -> [HadronNode] {
-        struct Payload: Decodable { let nodes: [HadronNode] }
+        struct Payload: Decodable { let findNodes: FindNodesResult }
+        // Query omitted → findNodes returns a deterministic filtered list
+        // (subsumes the old `nodes` query). Scope is a structured NodeFilter:
+        // runnable-only, optionally narrowed to one memory.
         let query = """
-        query($memory: ID, $limit: Int) {
-          nodes(isRunnable: true, memory: $memory, limit: $limit) {
-            \(Self.nodeFields)
+        query($filter: NodeFilter, $limit: Int) {
+          findNodes(filter: $filter, limit: $limit) {
+            hits { node { \(Self.nodeFields) } }
           }
         }
         """
-        var variables: [String: Any] = ["limit": limit]
-        if let memoryId { variables["memory"] = memoryId }
-        return try await run(query, Payload.self, variables: variables).nodes
+        var filter: [String: Any] = ["isRunnable": true]
+        if let memoryId { filter["memoryIds"] = [memoryId] }
+        let variables: [String: Any] = ["filter": filter, "limit": limit]
+        return try await run(query, Payload.self, variables: variables).findNodes.nodes
     }
 
     func findNodes(search: String, limit: Int = 50) async throws -> [HadronNode] {
-        struct Payload: Decodable { let nodes: [HadronNode] }
+        struct Payload: Decodable { let findNodes: FindNodesResult }
+        // mode:keyword keeps the old substring-search intent (now stemmed,
+        // relevance-ranked Postgres FTS) without pulling in the vector index.
         let query = """
-        query($search: String, $limit: Int) {
-          nodes(search: $search, limit: $limit) {
-            \(Self.nodeFields)
+        query($query: String, $limit: Int) {
+          findNodes(query: $query, mode: keyword, limit: $limit) {
+            hits { node { \(Self.nodeFields) } }
           }
         }
         """
-        let variables: [String: Any] = ["search": search, "limit": limit]
-        return try await run(query, Payload.self, variables: variables).nodes
+        let variables: [String: Any] = ["query": search, "limit": limit]
+        return try await run(query, Payload.self, variables: variables).findNodes.nodes
     }
 
     private static let nodeFields = """
     id loc name description nodeType memory { urn name }
     """
+
+    /// findNodes envelope: a scored-hit list. The app only needs the nodes, so
+    /// `nodes` flattens `hits[].node` back to the `[HadronNode]` the callers use.
+    private struct FindNodesResult: Decodable {
+        struct Hit: Decodable { let node: HadronNode }
+        let hits: [Hit]
+        var nodes: [HadronNode] { hits.map(\.node) }
+    }
 
     // MARK: Transport
 
