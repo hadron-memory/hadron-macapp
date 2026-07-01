@@ -97,6 +97,7 @@ struct OpenInPortalButton: View {
             }
             .buttonStyle(.borderless)
             .help("Open in portal")
+            .accessibilityLabel("Open in portal")
         }
     }
 }

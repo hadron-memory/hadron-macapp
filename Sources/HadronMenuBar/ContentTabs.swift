@@ -71,6 +71,9 @@ struct FindView: View {
             if state.searchQuery.trimmingCharacters(in: .whitespaces).count < 2 {
                 EmptyState(icon: "magnifyingglass", title: "Find nodes",
                            subtitle: "Type at least two characters to search names, locs, descriptions, and tags.")
+            } else if state.isSearching {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if state.searchResults.isEmpty {
                 EmptyState(icon: "magnifyingglass", title: "No matches",
                            subtitle: "Nothing matched “\(state.searchQuery)”.")

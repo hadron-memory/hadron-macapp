@@ -18,6 +18,7 @@ final class AppState: ObservableObject {
     @Published var searchResults: [HadronNode] = []
     @Published var searchQuery: String = ""
     @Published var isLoading = false
+    @Published var isSearching = false
     @Published var errorMessage: String?
 
     private let oauth = OAuthService()
@@ -63,6 +64,7 @@ final class AppState: ObservableObject {
         tasks = []
         searchResults = []
         searchQuery = ""
+        isSearching = false
         errorMessage = nil
         authState = .signedOut
     }
@@ -70,7 +72,7 @@ final class AppState: ObservableObject {
     // MARK: - Data loading
 
     func loadAll() async {
-        guard let client else { return }
+        guard let client, !isLoading else { return }
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
@@ -79,7 +81,8 @@ final class AppState: ObservableObject {
             async let memoriesResult = client.myMemories()
             async let tasksResult = client.taskNodes()
             self.me = try await meResult
-            self.memories = try await memoriesResult.sorted { $0.name.lowercased() < $1.name.lowercased() }
+            self.memories = try await memoriesResult
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
             self.tasks = try await tasksResult
         } catch {
             handle(error)
@@ -98,16 +101,21 @@ final class AppState: ObservableObject {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 2 else {
             searchResults = []
+            isSearching = false
             return
         }
+        isSearching = true
         searchTask = Task {
-            try? await Task.sleep(nanoseconds: 300_000_000)
+            try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled, let client else { return }
             do {
                 let results = try await client.findNodes(search: trimmed)
                 guard !Task.isCancelled else { return }
                 self.searchResults = results
+                self.isSearching = false
             } catch {
+                guard !Task.isCancelled else { return }
+                self.isSearching = false
                 handle(error)
             }
         }
@@ -117,8 +125,9 @@ final class AppState: ObservableObject {
 
     private func handle(_ error: Error) {
         if case HadronError.unauthorized = error {
-            errorMessage = HadronError.unauthorized.localizedDescription
+            // signOut() clears errorMessage, so set the message afterwards.
             signOut()
+            errorMessage = HadronError.unauthorized.localizedDescription
         } else {
             errorMessage = error.localizedDescription
         }

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// Root of the menu bar popover. Switches between signed-out and the three
 /// authenticated tabs (Memories / Tasks / Find).

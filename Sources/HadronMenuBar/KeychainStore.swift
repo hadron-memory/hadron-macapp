@@ -27,11 +27,15 @@ enum KeychainStore {
             kSecAttrAccount as String: key.rawValue,
         ]
         let attributes: [String: Any] = [kSecValueData as String: data]
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        var status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
         if status == errSecItemNotFound {
             var insert = query
             insert[kSecValueData as String] = data
-            SecItemAdd(insert as CFDictionary, nil)
+            status = SecItemAdd(insert as CFDictionary, nil)
+        }
+        if status != errSecSuccess {
+            // Surface the failure — a silently-dropped token loops sign-in.
+            NSLog("KeychainStore: failed to store \(key.rawValue) (OSStatus \(status))")
         }
     }
 

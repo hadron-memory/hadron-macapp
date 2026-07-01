@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import Security
 
 /// A PKCE pair (RFC 7636). The server supports the `S256` method only.
 struct PKCEPair {
@@ -17,7 +18,12 @@ struct PKCEPair {
     /// Cryptographically-random base64url string with no padding.
     private static func randomURLSafeString(byteCount: Int) -> String {
         var bytes = [UInt8](repeating: 0, count: byteCount)
-        _ = SecRandomCopyBytes(kSecRandomDefault, byteCount, &bytes)
+        let status = SecRandomCopyBytes(kSecRandomDefault, byteCount, &bytes)
+        if status != errSecSuccess {
+            // Never emit predictable (all-zero) bytes — fall back to the
+            // system CSPRNG, which is cryptographically secure on Apple platforms.
+            bytes = (0..<byteCount).map { _ in UInt8.random(in: .min ... .max) }
+        }
         return Data(bytes).base64URLEncodedString()
     }
 }

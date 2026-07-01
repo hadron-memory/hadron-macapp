@@ -83,8 +83,14 @@ struct HadronClient {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         var body: [String: Any] = ["query": query]
-        // Drop nil values so ID-typed optionals serialize as absent, not null.
-        let cleaned = variables.filter { !($0.value is NSNull) }
+        // Drop nil values — NSNull or a Swift Optional.none wrapped in Any — so
+        // ID-typed optionals serialize as absent rather than null.
+        let cleaned = variables.filter { _, value in
+            if value is NSNull { return false }
+            let mirror = Mirror(reflecting: value)
+            if mirror.displayStyle == .optional { return !mirror.children.isEmpty }
+            return true
+        }
         if !cleaned.isEmpty { body["variables"] = cleaned }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 

@@ -55,12 +55,14 @@ final class OAuthService: NSObject, ASWebAuthenticationPresentationContextProvid
 
         let pkce = PKCEPair()
         let state = UUID().uuidString
-        let authURL = buildAuthorizeURL(
+        guard let authURL = buildAuthorizeURL(
             endpoint: metadata.authorization_endpoint,
             clientId: clientId,
             pkce: pkce,
             state: state
-        )
+        ) else {
+            throw OAuthError.authorizationFailed("Invalid authorization endpoint URL.")
+        }
 
         let callbackURL = try await runWebAuth(url: authURL)
         let (code, returnedState) = try parseCallback(callbackURL)
@@ -120,8 +122,8 @@ final class OAuthService: NSObject, ASWebAuthenticationPresentationContextProvid
         return decoded.client_id
     }
 
-    private func buildAuthorizeURL(endpoint: String, clientId: String, pkce: PKCEPair, state: String) -> URL {
-        var components = URLComponents(string: endpoint)!
+    private func buildAuthorizeURL(endpoint: String, clientId: String, pkce: PKCEPair, state: String) -> URL? {
+        guard var components = URLComponents(string: endpoint) else { return nil }
         components.queryItems = [
             .init(name: "response_type", value: "code"),
             .init(name: "client_id", value: clientId),
@@ -132,7 +134,7 @@ final class OAuthService: NSObject, ASWebAuthenticationPresentationContextProvid
             .init(name: "code_challenge_method", value: pkce.method),
             .init(name: "state", value: state),
         ]
-        return components.url!
+        return components.url
     }
 
     private func runWebAuth(url: URL) async throws -> URL {
@@ -178,7 +180,10 @@ final class OAuthService: NSObject, ASWebAuthenticationPresentationContextProvid
     }
 
     private func exchangeToken(endpoint: String, code: String, clientId: String, verifier: String) async throws -> String {
-        var request = URLRequest(url: URL(string: endpoint)!)
+        guard let url = URL(string: endpoint) else {
+            throw OAuthError.tokenExchangeFailed("Invalid token endpoint URL.")
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")

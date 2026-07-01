@@ -33,7 +33,9 @@ struct HadronNode: Decodable, Identifiable, Hashable {
     /// node's loc (`hrn:memory:…` → `hrn:node:…::<loc>`).
     var nodeURN: String? {
         guard let memoryURN = memory?.urn else { return nil }
-        let base = memoryURN.replacingOccurrences(of: "hrn:memory:", with: "hrn:node:")
+        let prefix = "hrn:memory:"
+        guard memoryURN.hasPrefix(prefix) else { return nil }
+        let base = "hrn:node:" + memoryURN.dropFirst(prefix.count)
         return "\(base)::\(loc)"
     }
 }
