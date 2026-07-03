@@ -61,4 +61,11 @@ struct GraphQLResponse<T: Decodable>: Decodable {
 
 struct GraphQLError: Decodable {
     let message: String
+    /// Apollo-style error metadata; `code` carries machine-readable kinds
+    /// like BAD_USER_INPUT (used to retry sanitized searches).
+    let extensions: Extensions?
+
+    struct Extensions: Decodable {
+        let code: String?
+    }
 }
