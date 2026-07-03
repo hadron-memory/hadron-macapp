@@ -1,6 +1,6 @@
 import Foundation
 
-/// A Hadron memory as returned by `myMemories`.
+/// A Hadron memory as returned by `memories` (the uniform #473 read surface).
 struct Memory: Decodable, Identifiable, Hashable {
     let id: String
     let urn: String
@@ -15,7 +15,7 @@ struct Memory: Decodable, Identifiable, Hashable {
     }
 }
 
-/// A graph node as returned by `nodes`.
+/// A graph node as returned by `findNodes` hits.
 struct HadronNode: Decodable, Identifiable, Hashable {
     let id: String
     let loc: String
@@ -61,4 +61,11 @@ struct GraphQLResponse<T: Decodable>: Decodable {
 
 struct GraphQLError: Decodable {
     let message: String
+    /// Apollo-style error metadata; `code` carries machine-readable kinds
+    /// like BAD_USER_INPUT (used to retry sanitized searches).
+    let extensions: Extensions?
+
+    struct Extensions: Decodable {
+        let code: String?
+    }
 }
