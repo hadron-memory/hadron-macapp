@@ -32,11 +32,18 @@ struct HadronClient {
     }
 
     func myMemories() async throws -> [Memory] {
-        struct Payload: Decodable { let myMemories: [Memory] }
+        struct Payload: Decodable { let memories: Page<Memory> }
+        // Uniform read surface (hadron-server #473): memories() replaces
+        // myMemories and returns an { items, total } page. limit: 200 is the
+        // server cap — the old query returned the complete list, so ask for
+        // as much as one page allows. (A user with >200 memories would need
+        // offset paging; the menu bar list isn't built for that anyway.)
         let query = """
-        query { myMemories { id urn name shortDescription class } }
+        query($limit: Int) {
+          memories(limit: $limit) { items { id urn name shortDescription class } }
+        }
         """
-        return try await run(query, Payload.self).myMemories
+        return try await run(query, Payload.self, variables: ["limit": 200]).memories.items
     }
 
     func taskNodes(memoryId: String? = nil, limit: Int = 200) async throws -> [HadronNode] {
@@ -82,6 +89,12 @@ struct HadronClient {
         struct Hit: Decodable { let node: HadronNode }
         let hits: [Hit]
         var nodes: [HadronNode] { hits.map(\.node) }
+    }
+
+    /// Uniform { items, total } page envelope shared by every find-many query
+    /// on the #473 read surface (memories, apps, organizations, users, …).
+    private struct Page<Item: Decodable>: Decodable {
+        let items: [Item]
     }
 
     // MARK: Transport
