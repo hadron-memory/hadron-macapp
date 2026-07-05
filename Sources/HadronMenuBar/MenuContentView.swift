@@ -89,12 +89,15 @@ struct MenuContentView: View {
 
 private struct SignedOutView: View {
     @EnvironmentObject private var state: AppState
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "brain")
-                .font(.system(size: 40))
-                .foregroundStyle(.tint)
+            // Full-color round logo, with a dark-mode variant.
+            Image(nsImage: colorScheme == .dark ? .hadronHeaderDark : .hadronHeaderLight)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 64, height: 64)
             Text("Hadron")
                 .font(.title2.bold())
             Text("Sign in to browse your memories, tasks, and search the knowledge graph.")

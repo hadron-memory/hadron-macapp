@@ -11,9 +11,13 @@ struct HadronMenuBarApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("Hadron", systemImage: "brain") {
+        MenuBarExtra {
             MenuContentView()
                 .environmentObject(state)
+        } label: {
+            // Monochrome template glyph; macOS tints it for the menu bar
+            // appearance (dark in a light bar, light in a dark bar).
+            Image(nsImage: .hadronMenuBar)
         }
         .menuBarExtraStyle(.window)
     }

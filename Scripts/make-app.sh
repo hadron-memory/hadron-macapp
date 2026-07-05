@@ -42,6 +42,33 @@ rm -rf "${APP}"
 mkdir -p "${MACOS_DIR}" "${RES_DIR}"
 cp "${BIN_PATH}" "${MACOS_DIR}/${APP_NAME}"
 
+# Copy the SwiftPM resource bundle (menu-bar and header logos) into Resources so
+# Bundle.module resolves it at runtime. It must live under Contents/Resources —
+# a nested bundle in Contents/MacOS breaks codesign's bundle-format check.
+BIN_DIR="$(dirname "${BIN_PATH}")"
+for bundle in "${BIN_DIR}"/*.bundle; do
+  [[ -e "${bundle}" ]] || continue
+  cp -R "${bundle}" "${RES_DIR}/"
+done
+
+# Build the app icon (AppIcon.icns) from the 1024px source logo.
+ICON_SRC="Scripts/AppIcon/AppIcon-1024.png"
+if [[ -f "${ICON_SRC}" ]]; then
+  echo "==> Building AppIcon.icns"
+  ICONSET="$(mktemp -d)/AppIcon.iconset"
+  mkdir -p "${ICONSET}"
+  for spec in "16 16x16" "32 16x16@2x" "32 32x32" "64 32x32@2x" \
+              "128 128x128" "256 128x128@2x" "256 256x256" "512 256x256@2x" \
+              "512 512x512" "1024 512x512@2x"; do
+    px="${spec%% *}"; name="${spec##* }"
+    sips -z "${px}" "${px}" "${ICON_SRC}" --out "${ICONSET}/icon_${name}.png" >/dev/null
+  done
+  iconutil -c icns "${ICONSET}" -o "${RES_DIR}/AppIcon.icns"
+  rm -rf "$(dirname "${ICONSET}")"
+else
+  echo "warning: ${ICON_SRC} not found; app will use the generic icon" >&2
+fi
+
 cat > "${CONTENTS}/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -55,6 +82,8 @@ cat > "${CONTENTS}/Info.plist" <<PLIST
     <string>${BUNDLE_ID}</string>
     <key>CFBundleExecutable</key>
     <string>${APP_NAME}</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

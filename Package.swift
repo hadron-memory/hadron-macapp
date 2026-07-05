@@ -10,6 +10,9 @@ let package = Package(
         .executableTarget(
             name: "HadronMenuBar",
             path: "Sources/HadronMenuBar",
+            resources: [
+                .copy("Resources")
+            ],
             swiftSettings: [
                 // The app is UI-driven and single-actor by design; Swift 5 mode
                 // keeps the concurrency checking pragmatic for a menu bar app.
