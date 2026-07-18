@@ -143,7 +143,7 @@ struct HadronClient {
     }
 
     private static let nodeFields = """
-    id loc name description nodeType memory { urn name }
+    id loc name description nodeType urn memory { urn name }
     """
 
     /// findNodes envelope: a scored-hit list. The app only needs the nodes, so

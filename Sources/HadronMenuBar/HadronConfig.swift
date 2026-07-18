@@ -32,7 +32,7 @@ enum HadronConfig {
     static let portalBaseURL = URL(string: "https://hadronmemory.com")!
 
     /// Build the shareable portal URL for a fully-qualified entity URN.
-    /// e.g. `https://hadronmemory.com/app/u/hrn:node:org::memory::loc`
+    /// e.g. `https://hadronmemory.com/app/u/hrn:node:org:memory:loc`
     static func portalURL(forURN urn: String) -> URL? {
         // Encode the URN as a single path segment — exclude "/" so a URN that
         // ever contains one doesn't split into extra segments.
