@@ -22,6 +22,11 @@ struct HadronNode: Decodable, Identifiable, Hashable {
     let name: String
     let description: String?
     let nodeType: String
+    /// Fully-qualified node URN, composed server-side from the node's memory
+    /// URN + loc (#481) and carried by every Node-returning surface. We consume
+    /// it as-is rather than re-deriving it so the app stays agnostic to the URN
+    /// grammar (the server owns composition; cf. hadron-server#691).
+    let nodeURN: String?
     let memory: NodeMemory?
 
     struct NodeMemory: Decodable, Hashable {
@@ -29,14 +34,9 @@ struct HadronNode: Decodable, Identifiable, Hashable {
         let name: String
     }
 
-    /// Fully-qualified node URN, composed from the owning memory's URN and the
-    /// node's loc (`hrn:memory:…` → `hrn:node:…::<loc>`).
-    var nodeURN: String? {
-        guard let memoryURN = memory?.urn else { return nil }
-        let prefix = "hrn:memory:"
-        guard memoryURN.hasPrefix(prefix) else { return nil }
-        let base = "hrn:node:" + memoryURN.dropFirst(prefix.count)
-        return "\(base)::\(loc)"
+    private enum CodingKeys: String, CodingKey {
+        case id, loc, name, description, nodeType, memory
+        case nodeURN = "urn"
     }
 }
 
