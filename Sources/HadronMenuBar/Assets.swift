@@ -5,13 +5,14 @@ import AppKit
 /// `actool`), so we load them as `NSImage` rather than through an asset catalog.
 extension NSImage {
     private static func bundled(_ name: String, template: Bool = false) -> NSImage {
-        guard
-            let url = Bundle.module.url(
-                forResource: name, withExtension: "png", subdirectory: "Resources"),
-            let image = NSImage(contentsOf: url)
-        else {
+        let image: NSImage
+        if let url = Bundle.module.url(
+            forResource: name, withExtension: "png", subdirectory: "Resources"),
+            let loaded = NSImage(contentsOf: url) {
+            image = loaded
+        } else {
             // Fallback keeps the app usable if a resource ever goes missing.
-            return NSImage(
+            image = NSImage(
                 systemSymbolName: "brain", accessibilityDescription: "Hadron") ?? NSImage()
         }
         image.isTemplate = template
