@@ -72,16 +72,57 @@ The script does a `-c release` build, assembles the bundle with an `Info.plist`
 version keys, and the `com.hadron.macapp` URL scheme), and code-signs it. `open
 dist/HadronMenuBar.app` launches it; the app appears in the menu bar with no Dock icon.
 
-### Distributing outside your own machine
+## Cut a notarized release (distribute without building)
 
-Ad-hoc signing is enough to run locally. To share it, sign with a Developer ID identity
-and **notarize**:
+`Scripts/release.sh` produces a **notarized, stapled DMG** anyone can download and open
+with no Gatekeeper warnings, and refreshes the Homebrew cask. It wraps the whole
+pipeline: build → sign (Developer ID + hardened runtime) → notarize the app → staple →
+package a DMG → sign + notarize + staple the DMG.
+
+### One-time prerequisites
+
+Team ID: `V2NXQ22BM9`.
+
+1. **Create a Developer ID Application certificate** (enrolling in the Apple Developer
+   Program does *not* create one for you). In Xcode: **Settings → Accounts →** select your
+   Apple ID **→ Manage Certificates → + → Developer ID Application**. This installs it in
+   your login Keychain. Verify:
+
+   ```sh
+   security find-identity -v -p codesigning   # expect: Developer ID Application: … (V2NXQ22BM9)
+   ```
+
+2. **Store notarytool credentials** once (uses an [app-specific password](https://appleid.apple.com/)):
+
+   ```sh
+   xcrun notarytool store-credentials "hadron-notary" \
+     --apple-id "you@example.com" --team-id V2NXQ22BM9 \
+     --password "<app-specific-password>"
+   ```
+
+### Cut a release
 
 ```sh
-SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" Scripts/make-app.sh
-ditto -c -k --keepParent dist/HadronMenuBar.app dist/HadronMenuBar.zip
-xcrun notarytool submit dist/HadronMenuBar.zip --keychain-profile "AC_PROFILE" --wait
-xcrun stapler staple dist/HadronMenuBar.app
+Scripts/release.sh 0.1.0             # build + notarize → dist/HadronMenuBar-0.1.0.dmg
+PUBLISH=1 Scripts/release.sh 0.1.0   # also create the GitHub Release with the DMG
 ```
 
-(An Xcode app target would also work, but the script keeps the plain-SPM workflow.)
+The script prints the DMG's `sha256` and rewrites `packaging/homebrew/hadron-menu-bar.rb`
+with the new version + checksum.
+
+### Publish the Homebrew cask
+
+After a release, copy the updated `packaging/homebrew/hadron-menu-bar.rb` into your tap
+repo (e.g. `hadron-memory/homebrew-tap` under `Casks/`) and commit. Users then install
+with:
+
+```sh
+brew install --cask hadron-memory/tap/hadron-menu-bar
+```
+
+### Local ad-hoc build (no account needed)
+
+`Scripts/make-app.sh` alone produces an **ad-hoc-signed** `dist/HadronMenuBar.app` — fine
+for running locally or handing to a trusted tester, but unsigned/unnotarized apps trip
+Gatekeeper on other machines (right-click → **Open**, or
+`xattr -dr com.apple.quarantine <app>`). Use `release.sh` for real distribution.
